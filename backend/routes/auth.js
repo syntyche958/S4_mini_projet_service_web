@@ -143,10 +143,11 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/auth/users - Liste des utilisateurs (debug)
+// GET api/auth/users - Liste des utilisateurs (debug)
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    const db = req.app.locals.db;
+    const users = await db.collection('users').find({}).project({ password: 0 }).toArray();
     res.json({
       message: 'Liste des utilisateurs',
       count: users.length,
@@ -185,5 +186,75 @@ router.get('/users', async (req, res) => {
 
 // TODO 2: Votre code ici
 
+// ============================================
+// Routes OAuth Google
+// ============================================
+
+router.get('/google',
+   passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
+
+router.get('/google/callback', 
+  passport.authenticate('google', 
+    { 
+      session: false, 
+      failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
+    }), (req, res) => {
+    try {
+      const token = generateToken(req.user._id);
+
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+    } catch (error) {
+      console.error('Erreur lors de la redirection:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=token_generation_failed`);
+    }
+});
+
+// ============================================
+// Routes OAuth Github
+// ============================================
+
+router.get('/github',
+   passport.authenticate('github', 
+    { 
+      scope: ['user:email'], 
+      session: false 
+    }));
+
+router.get('/github/callback', 
+  passport.authenticate('github', 
+    { 
+      session: false, 
+      failureRedirect: `${process.env.FRONTEND_URL}/login?error=github_auth_failed` 
+    }), (req, res) => {
+    try {
+      const token = generateToken(req.user._id);
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+    } catch (error) {
+      console.error('Erreur lors de la redirection:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=token_generation_failed`);
+    }
+  });
+
+// ============================================
+// Routes OAuth Discord
+// ============================================
+
+router.get('/discord',
+   passport.authenticate('discord', { scope: ['identify', 'email'], session: false }));
+
+router.get('/discord/callback', 
+  passport.authenticate('discord', 
+    { 
+      session: false, 
+      failureRedirect: `${process.env.FRONTEND_URL}/login?error=discord_auth_failed` 
+    }), (req, res) => {
+    try {
+      const token = generateToken(req.user._id);
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+    } catch (error) {
+      console.error('Erreur lors de la redirection:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=token_generation_failed`);
+    }
+  });
 
 module.exports = router;
